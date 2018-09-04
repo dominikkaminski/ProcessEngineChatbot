@@ -9,13 +9,12 @@
   "author": "Microsoft",
   "license": "MIT",
   "dependencies": {
-    "botbuilder": "^4.0.0-preview1.0",
+    "botbuilder": "^4.0.0-preview1.2",
     "botbuilder-ai": "^4.0.0-preview1.2",
-    "botbuilder-azure": "^4.0.0-preview1.2",
     "botbuilder-dialogs": "^4.0.0-preview1.2",
-    "restify": "^7.1.1",
-    "zip-folder": "^1.0.0",
+    "fs": "^0.0.1-security",
     "path": "^0.12.7",
-    "fs": "^0.0.1-security"
+    "restify": "^7.1.1",
+    "zip-folder": "^1.0.0"
   }
 }

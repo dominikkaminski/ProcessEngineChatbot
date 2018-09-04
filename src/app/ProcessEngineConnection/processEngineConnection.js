@@ -15,9 +15,18 @@ class ProcessEngineConnection extends DialogContainer {
                 await dc.context.sendActivity("What is the URL of your ProcessEngine?");
             },
             async function (dc, url){
-                // Save the url
-                dc.activeDialog.state.processEngine.url = url;
-                await dc.prompt('confirmPrompt', `Is ${url} you want to connect to?`);
+                const processedUrl = ProcessEngineConnection.processUrl(url);
+
+                if (processedUrl !== undefined) {
+                    // Save the url
+                    dc.activeDialog.state.processEngine.url = processedUrl;
+                    await dc.prompt('confirmPrompt', `Is ${processedUrl} th URL you want to connect to?`);
+                } else {
+                    await dc.context.sendActivity(`The URL you provided is invalid. Pleas provice a valid one!`);
+                    await dc.continue();
+                }
+
+
             },
             async function (dc, response){
                 // Save the room number
@@ -27,6 +36,7 @@ class ProcessEngineConnection extends DialogContainer {
                     try {
                         await ProcessEngineConnection.connectToProcessEngine(dc.activeDialog.state.processEngine.url);
                     } catch (err) {
+                        console.log(err);
                         await dc.context.sendActivity(`Failed to connect, please define an other ProcessEngine URL.`);
                         dc.activeDialog.state.processEngine.url = null;
                         await dc.continue();
@@ -49,17 +59,58 @@ class ProcessEngineConnection extends DialogContainer {
         this.dialogs.add('textPrompt', new TextPrompt());
         this.dialogs.add('confirmPrompt', new ConfirmPrompt());
     }
-     async connectToProcessEngine(url) {
+    static async connectToProcessEngine(url) {
         const options = {
-            uri: `http://${url}:8000/api/management/v1/process_models`,
+            uri: `${url}/api/management/v1/process_models`,
             method: "GET",
             headers: {
                 authorization: 'Bearer ZHVtbXlfdG9rZW4=',
             },
             json: true,
         };
-        let statusCode = null;
         return request(options);
-     }
+    }
+
+    static processUrl(rawUrl) {
+        let url = rawUrl;
+        const containPort = ProcessEngineConnection.containsPort(url);
+
+        // Remove trailing slash
+        if (url.endsWith("/")) {
+            url = url.substring(0, -1);
+        }
+
+        /* Help the user and format the url for him.
+            Wanted: f.e. http://1.2.3.4:8000
+         */
+
+        // Given: localhost
+        if (url === "localhost") {
+            return "http://localhost:8000"
+        }
+
+        // Given: f.e. http://localhost
+        if ((url.startsWith("http://") || url.startsWith("https://")) && !containPort) {
+            return `${url}:8000`;
+        }
+
+        // Given f.e. http://localhost:8000
+        if ((url.startsWith("http://") || url.startsWith("https://")) && containPort) {
+            return url;
+        }
+
+        // Given f.e. 1.2.3.4:8000
+        if (containPort) {
+            return `http://${url}`;
+        }
+
+        // Given f.e. 1.2.3.4
+        return `http://${url}:8000`;
+    }
+
+    static containsPort(url) {
+        const regex = /[:](\d{1,5})/g
+        return url.match(regex);
+    }
 }
 exports.ProcessEngineConnection = ProcessEngineConnection;

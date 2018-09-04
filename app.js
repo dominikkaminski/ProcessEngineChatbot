@@ -1,11 +1,9 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
+const {BotFrameworkAdapter, BotStateSet, ConversationState, MemoryStorage, MessageFactory, UserState} = require("botbuilder");
 const {LuisRecognizer} = require ("botbuilder-ai");
-
-const {BotFrameworkAdapter, ConversationState, UserState, BotStateSet, MessageFactory, MemoryStorage} = require("botbuilder");
 const {DialogSet} = require("botbuilder-dialogs");
 const restify = require("restify");
-var azure = require('botbuilder-azure');
 
 // Create server
 let server = restify.createServer();
@@ -33,86 +31,32 @@ const luisRecognizer = new LuisRecognizer({
 
 // Add state middleware
 const storage = new MemoryStorage();
-const convoState = new ConversationState(storage);
+const conversationState = new ConversationState(storage);
 const userState = new UserState(storage);
 
-adapter.use(new BotStateSet(convoState, userState));
+adapter.use(new BotStateSet(conversationState, userState));
 adapter.use(luisRecognizer);
 
-// Listen for incoming requests
-/**server.post('/api/messages', (req, res) => {
-    // Route received request to adapter for processing
-    adapter.processActivity(req, res, async (context) => {
-        const isMessage = context.activity.type === 'message';
-
-        // Create dialog context
-        const state = conversationState.get(context);
-        const dc = dialogs.createContext(context, state);
-
-        if (!isMessage) {
-            await context.sendActivity(`[${context.activity.type} event detected]`);
-        }
-
-        // Check to see if anyone replied.
-        if (!context.responded) {
-            await dc.continue();
-            // if the dialog didn't send a response
-            if (!context.responded && isMessage) {
-
-
-                await luisRecognizer.recognize(context).then(async () =>
-                    {
-                        // Retrieve the LUIS results from our LUIS application
-                        const luisResults = luisRecognizer.get(context);
-
-                        // Extract the top intent from LUIS and use it to select which dialog to start
-                        // "NotFound" is the intent name for when no top intent can be found.
-                        const topIntent = LuisRecognizer.topIntent(luisResults, "NotFound");
-
-                        switch (topIntent)
-                        {
-                            case "ProcessEngineConnection": {
-                                await context.sendActivity("Top intent is ProcessEngineConnection ");
-                                await dc.begin('reserveTable', luisResults);
-                                break;
-                            }
-
-                            case "Greetings": {
-                                await context.sendActivity("Top intent is Greeting");
-                                break;
-                            }
-
-                            default: {
-                                await dc.begin('default', topIntent);
-                                break;
-                            }
-                        }
-
-                    }, (err) => {
-                        // there was some error
-                        console.log(err);
-                    }
-                );
-            }
-        }
-    });
-}); **/
+// List all Bot capabilities to guide the user
+const botCapabilities = [
+    'Connecting to a ProcessEngine',
+    'Show User tasks',
+];
 
 // Listen for incoming requests
 server.post('/api/messages', (req, res) => {
-    adapter.processActivity(req, res, async (context) => {
+     adapter.processActivity(req, res, async (context) => {
         const isMessage = context.activity.type === 'message';
 
         // State will store all of your information
-        const convo = convoState.get(context);
-        const user = userState.get(context); // userState will not be used in this example
+        const conversationContext = conversationState.get(context);
 
-        const dc = dialogs.createContext(context, convo);
+        const dc = dialogs.createContext(context, conversationContext);
         // Continue the current dialog if one is currently active
         await dc.continue();
 
         // Getting the user info from the state
-        const userinfo = userState.get(dc.context);
+        const userStateContect = userState.get(dc.context);
 
         if (!context.responded && isMessage) {
             // Retrieve the LUIS results from our LUIS application
@@ -125,60 +69,56 @@ server.post('/api/messages', (req, res) => {
             switch (topIntent)
             {
                 case "ProcessEngineConnection": {
-                    if(!userinfo.processEngine || !userinfo.processEngine.url){
+                    if(!userStateContect.processEngine || !userStateContect.processEngine.url){
+                        await dc.context.sendActivity('I have understood, that you want to connect to a ProcessEngine.');
                         await dc.begin('processEngineConnectionPrompt');
                     }else{
-                        await dc.context.sendActivity(`You are already connected to ${userinfo.processEngine.url}.`);
+                        await dc.context.sendActivity(`You are already connected to ${userStateContect.processEngine.url}.`);
                     }
                     break;
                 }
 
                 case "Greetings": {
-                    await dc.context.sendActivity("Top intent is Greeting");
+                    await dc.begin('greetingsPrompt');
                     break;
                 }
 
                 default: {
-                    if(!userinfo.processEngine){
-                        await dc.context.sendActivity(`Hello 👋 \n\n Your are not connected to a ProcessEngine.\n If you want to connect to one, please say 'Connect to a ProcessEngine'.`);
+                    if(!userStateContect.processEngine){
+                        await dc.context.sendActivity(`I did not understand 😟\n\n Your are not connected to a ProcessEngine.\n If you want to connect to one, please say 'Connect to a ProcessEngine'.`);
                     }else{
-                        await dc.context.sendActivity(`Hello 👋`);
+                        await dc.context.sendActivity(`I did not understand 😟 \n\n Please ask for help.`);
                     }
                     break;
                 }
             }
-        };
+        }
     });
 });
 const dialogs = new DialogSet();
-dialogs.add('mainMenu', [
+
+dialogs.add('help', [
     async function (dc, args) {
-        const menu = ["Reserve Table", "Wake Up"];
-        await dc.context.sendActivity(MessageFactory.suggestedActions(menu));
+        // List all Bot capabilities to guide the user
+
+
+        await dc.prompt('textPrompt', 'Hello 👋 \n\nHow can I help you?');
+        await dc.context.sendActivity(MessageFactory.suggestedActions(botCapabilities));
     },
-    async function (dc, result){
-        // Decide which module to start
-        switch(result){
-            case "Reserve Table":
-                await dc.begin('reservePrompt');
-                break;
-            case "Wake Up":
-                await dc.begin('checkInPrompt');
+    async function(dc, choice){
+        switch(choice){
+            case "Connecting to a ProcessEngine":
+                await dc.begin('processEngineConnectionPrompt');
                 break;
             default:
                 await dc.context.sendActivity("Sorry, i don't understand that command. Please choose an option from the list below.");
                 break;
         }
-    },
-    async function (dc, result){
-        await dc.replace('mainMenu'); // Show the menu again
     }
-
 ]);
-
 // Importing the dialogs
-const processEngineConnection = require("./src/ProcessEngineConnection/processEngineConnection");
+const processEngineConnection = require("./src/app/ProcessEngineConnection/processEngineConnection");
 dialogs.add('processEngineConnectionPrompt', new processEngineConnection.ProcessEngineConnection(userState));
 
-const reserve_table = require("./src/Greetings/greetings");
-dialogs.add('reservePrompt', new reserve_table.ReserveTable(userState));
+const greetings = require("./src/app/Greetings/greetings");
+dialogs.add('greetingsPrompt', new greetings.Greetings(userState, botCapabilities));
