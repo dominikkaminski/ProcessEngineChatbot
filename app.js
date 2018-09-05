@@ -40,7 +40,7 @@ adapter.use(luisRecognizer);
 // List all Bot capabilities to guide the user
 const botCapabilities = [
     'Connecting to a ProcessEngine',
-    'Show UserTasks',
+    'Show ProcessModels',
 ];
 
 // Listen for incoming requests

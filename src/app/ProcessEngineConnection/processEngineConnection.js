@@ -15,7 +15,10 @@ class ProcessEngineConnection extends DialogContainer {
                 dc.activeDialog.state.processEngine = {};
 
                 // Check if entities are submitted
-                const locations = FindEntities.findEntities('ProcessEngineLocationURL', args.entities);
+                let locations;
+                if (args !== undefined) {
+                    locations = FindEntities.findEntities('ProcessEngineLocationURL', args.entities);
+                }
 
                 // If entities are submitted, save them an continue to next steo
                 if (locations !== undefined && locations.length > 0) {
