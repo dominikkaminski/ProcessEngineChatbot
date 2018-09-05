@@ -15,9 +15,9 @@ class ProcessEngineProcessModels extends DialogContainer {
                     const body = await ConnectionToProcessEngine.getProcessModels(url);
                     const processModels = body['processModels'];
                     if (processModels.length > 0) {
-                        let listOfProcessModelIDs = "**Deployed ProcessModes:**\n>";
+                        let listOfProcessModelIDs = "**Deployed ProcessModes:**";
                         for (let i = 0; i < processModels.length; i++) {
-                            listOfProcessModelIDs += `- ${processModels[i]['id']} \n`;
+                            listOfProcessModelIDs += `\n- ${processModels[i]['id']}`;
                         }
                         await dc.context.sendActivity(listOfProcessModelIDs);
                     } else {
