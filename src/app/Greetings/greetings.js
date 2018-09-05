@@ -11,8 +11,8 @@ class Greetings extends DialogContainer {
                 const prompt =
 `Hello 👋 
 \nHow can I help you?
-\nAt first you have to connect to a ProcessEngine. You can do this by say 
-**Connect to a ProcessEngine**
+\nAt first you have to connect to a ProcessEngine. You can do this by saying 
+**"Connect to a ProcessEngine"**
 \nFurther capabilities are:
 - ${botCapabilities.slice(1,).toString().replace(",", "<br />- ")}`;
                 await dc.prompt('textPrompt',  prompt);

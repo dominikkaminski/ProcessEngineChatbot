@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-const {BotFrameworkAdapter, BotStateSet, ConversationState, MemoryStorage, MessageFactory, UserState} = require("botbuilder");
+const {BotFrameworkAdapter, BotStateSet, ConversationState, MemoryStorage, UserState} = require("botbuilder");
 const {LuisRecognizer} = require ("botbuilder-ai");
 const {DialogSet} = require("botbuilder-dialogs");
 const restify = require("restify");
@@ -40,7 +40,7 @@ adapter.use(luisRecognizer);
 // List all Bot capabilities to guide the user
 const botCapabilities = [
     'Connecting to a ProcessEngine',
-    'Show User tasks',
+    'Show UserTasks',
 ];
 
 // Listen for incoming requests
@@ -71,15 +71,30 @@ server.post('/api/messages', (req, res) => {
                 case "ProcessEngineConnection": {
                     if(!userStateContect.processEngine || !userStateContect.processEngine.url){
                         await dc.context.sendActivity('I have understood, that you want to connect to a ProcessEngine.');
-                        await dc.begin('processEngineConnectionPrompt');
-                    }else{
+                        await dc.begin('processEngineConnectionPrompt', luisResults);
+                    } else {
                         await dc.context.sendActivity(`You are already connected to ${userStateContect.processEngine.url}.`);
+                    }
+                    break;
+                }
+
+                case "ProcessEngineProcessModels": {
+                    if(!userStateContect.processEngine || !userStateContect.processEngine.url){
+                        await dc.context.sendActivity('I have understood, that you want to list your ProcessModels. \n\nBut first, you have to connect to a ProcessEngine.');
+                        await dc.begin('processEngineConnectionPrompt');
+                    } else {
+                        await dc.begin('processEngineProcessModelsPrompt');
                     }
                     break;
                 }
 
                 case "Greetings": {
                     await dc.begin('greetingsPrompt');
+                    break;
+                }
+
+                case "Help": {
+                    await dc.begin('helpPrompt');
                     break;
                 }
 
@@ -97,28 +112,16 @@ server.post('/api/messages', (req, res) => {
 });
 const dialogs = new DialogSet();
 
-dialogs.add('help', [
-    async function (dc, args) {
-        // List all Bot capabilities to guide the user
-
-
-        await dc.prompt('textPrompt', 'Hello 👋 \n\nHow can I help you?');
-        await dc.context.sendActivity(MessageFactory.suggestedActions(botCapabilities));
-    },
-    async function(dc, choice){
-        switch(choice){
-            case "Connecting to a ProcessEngine":
-                await dc.begin('processEngineConnectionPrompt');
-                break;
-            default:
-                await dc.context.sendActivity("Sorry, i don't understand that command. Please choose an option from the list below.");
-                break;
-        }
-    }
-]);
 // Importing the dialogs
 const processEngineConnection = require("./src/app/ProcessEngineConnection/processEngineConnection");
 dialogs.add('processEngineConnectionPrompt', new processEngineConnection.ProcessEngineConnection(userState));
 
+const processEngineProcessModels = require("./src/app/ProcessEngineProcessModels/processEngineProcessModels");
+dialogs.add('processEngineProcessModelsPrompt', new processEngineProcessModels.ProcessEngineProcessModels(userState));
+
 const greetings = require("./src/app/Greetings/greetings");
 dialogs.add('greetingsPrompt', new greetings.Greetings(userState, botCapabilities));
+
+const help = require("./src/app/Help/help");
+dialogs.add('helpPrompt', new help.Help(userState, botCapabilities));
+

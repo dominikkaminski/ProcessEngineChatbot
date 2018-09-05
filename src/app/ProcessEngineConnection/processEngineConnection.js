@@ -1,6 +1,6 @@
-const { DialogContainer, TextPrompt, ConfirmPrompt } = require('botbuilder-dialogs');
-const request = require('request-promise-native');
-
+const {DialogContainer, TextPrompt, ConfirmPrompt} = require('botbuilder-dialogs');
+const ConnectionToProcessEngine = require('./../../helpers/ProcessEngine/connectionToProcessEngine.js');
+const FindEntities = require('./../../helpers/LUIS/findEntities.js');
 
 class ProcessEngineConnection extends DialogContainer {
     constructor(userState) {
@@ -9,32 +9,48 @@ class ProcessEngineConnection extends DialogContainer {
 
         // Defining the conversation flow using a waterfall model
         this.dialogs.add('processEngineConnection', [
-            async function (dc) {
+
+            async function (dc, args) {
                 // Create a new local processEngine state object
                 dc.activeDialog.state.processEngine = {};
-                await dc.context.sendActivity("What is the URL of your ProcessEngine?");
+
+                // Check if entities are submitted
+                const locations = FindEntities.findEntities('ProcessEngineLocationURL', args.entities);
+
+                // If entities are submitted, save them an continue to next steo
+                if (locations !== undefined && locations.length > 0) {
+                    dc.activeDialog.state.processEngine.url = locations[0];
+                    await dc.continue();
+                } else {
+                    await dc.context.sendActivity("What is the URL of your ProcessEngine?");
+                }
             },
             async function (dc, url){
-                const processedUrl = ProcessEngineConnection.processUrl(url);
+                let processedUrl;
+
+                if (dc.activeDialog.state.processEngine.url !== undefined) {
+                    processedUrl = ProcessEngineConnection.processUrl(dc.activeDialog.state.processEngine.url);
+                } else {
+                    processedUrl = ProcessEngineConnection.processUrl(url);
+                }
 
                 if (processedUrl !== undefined) {
                     // Save the url
                     dc.activeDialog.state.processEngine.url = processedUrl;
-                    await dc.prompt('confirmPrompt', `Is ${processedUrl} th URL you want to connect to?`);
+                    await dc.prompt('confirmPrompt', `Is ${processedUrl} the URL you want to connect to?`);
                 } else {
-                    await dc.context.sendActivity(`The URL you provided is invalid. Pleas provice a valid one!`);
+                    await dc.context.sendActivity(`The URL you provided is invalid. Please provide a valid one!`);
                     await dc.continue();
                 }
 
 
             },
             async function (dc, response){
-                // Save the room number
                 if (response === true) {
                     await dc.context.sendActivity(`Thanks! I'm trying to connect now..`);
 
                     try {
-                        await ProcessEngineConnection.connectToProcessEngine(dc.activeDialog.state.processEngine.url);
+                        await ConnectionToProcessEngine.getProcessModels(dc.activeDialog.state.processEngine.url);
                     } catch (err) {
                         console.log(err);
                         await dc.context.sendActivity(`Failed to connect, please define an other ProcessEngine URL.`);
@@ -58,17 +74,6 @@ class ProcessEngineConnection extends DialogContainer {
         // Defining the prompt used in this conversation flow
         this.dialogs.add('textPrompt', new TextPrompt());
         this.dialogs.add('confirmPrompt', new ConfirmPrompt());
-    }
-    static async connectToProcessEngine(url) {
-        const options = {
-            uri: `${url}/api/management/v1/process_models`,
-            method: "GET",
-            headers: {
-                authorization: 'Bearer ZHVtbXlfdG9rZW4=',
-            },
-            json: true,
-        };
-        return request(options);
     }
 
     static processUrl(rawUrl) {
