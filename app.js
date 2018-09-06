@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 const {BotFrameworkAdapter, BotStateSet, ConversationState, MemoryStorage, UserState} = require("botbuilder");
-const {LuisRecognizer} = require ("botbuilder-ai");
+const {LuisRecognizer} = require("botbuilder-ai");
 const {DialogSet} = require("botbuilder-dialogs");
 const restify = require("restify");
 
@@ -45,7 +45,7 @@ const botCapabilities = [
 
 // Listen for incoming requests
 server.post('/api/messages', (req, res) => {
-     adapter.processActivity(req, res, async (context) => {
+    adapter.processActivity(req, res, async (context) => {
         const isMessage = context.activity.type === 'message';
 
         // State will store all of your information
@@ -66,10 +66,9 @@ server.post('/api/messages', (req, res) => {
             // "NotFound" is the intent name for when no top intent can be found.
             const topIntent = LuisRecognizer.topIntent(luisResults, "NotFound");
 
-            switch (topIntent)
-            {
+            switch (topIntent) {
                 case "ProcessEngineConnection": {
-                    if(!userStateContect.processEngine || !userStateContect.processEngine.url){
+                    if (!userStateContect.processEngine || !userStateContect.processEngine.url) {
                         await dc.context.sendActivity('I have understood, that you want to connect to a ProcessEngine.');
                         await dc.begin('processEngineConnectionPrompt', luisResults);
                     } else {
@@ -79,7 +78,7 @@ server.post('/api/messages', (req, res) => {
                 }
 
                 case "ProcessEngineProcessModels": {
-                    if(!userStateContect.processEngine || !userStateContect.processEngine.url){
+                    if (!userStateContect.processEngine || !userStateContect.processEngine.url) {
                         await dc.context.sendActivity('I have understood, that you want to list your ProcessModels. \n\nBut first, you have to connect to a ProcessEngine.');
                         await dc.begin('processEngineConnectionPrompt');
                     } else {
@@ -99,9 +98,9 @@ server.post('/api/messages', (req, res) => {
                 }
 
                 default: {
-                    if(!userStateContect.processEngine){
+                    if (!userStateContect.processEngine) {
                         await dc.context.sendActivity(`I did not understand 😟\n\n Your are not connected to a ProcessEngine.\n If you want to connect to one, please say 'Connect to a ProcessEngine'.`);
-                    }else{
+                    } else {
                         await dc.context.sendActivity(`I did not understand 😟 \n\n Please ask for help.`);
                     }
                     break;
