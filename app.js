@@ -27,7 +27,7 @@ const luisRecognizer = new LuisRecognizer({
     // your key is at https://www.luis.ai under User settings > Authoring Key
     subscriptionKey: process.env.LuisRecognizerSubscriptionKey,
     // The serviceEndpoint URL begins with "https://<region>.api.cognitive.microsoft.com", where region is the region associated with the key you are using. Some examples of regions are `westus`, `westcentralus`, `eastus2`, and `southeastasia`.
-    serviceEndpoint: ProcessEngine
+    serviceEndpoint: process.env.LuisRecognizerServiceEndpoint
 });
 /*
 // Create Memory storage
