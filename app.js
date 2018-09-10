@@ -22,12 +22,12 @@ const adapter = new BotFrameworkAdapter({
 const luisRecognizer = new LuisRecognizer({
     // This appID is for a public app that's made available for demo purposes
     // You can use it by providing your LUIS subscription key
-    appId: '028a73e6-13cc-4f0b-83e6-ca86cd59ca3b',
+    appId: process.env.LuisRecognizerAppId,
     // replace subscriptionKey with your Authoring Key
     // your key is at https://www.luis.ai under User settings > Authoring Key
-    subscriptionKey: 'e682f37972684670b60d58b030214321',
+    subscriptionKey: process.env.LuisRecognizerSubscriptionKey,
     // The serviceEndpoint URL begins with "https://<region>.api.cognitive.microsoft.com", where region is the region associated with the key you are using. Some examples of regions are `westus`, `westcentralus`, `eastus2`, and `southeastasia`.
-    serviceEndpoint: 'https://westus.api.cognitive.microsoft.com'
+    serviceEndpoint: ProcessEngine
 });
 /*
 // Create Memory storage
@@ -44,24 +44,20 @@ const userStorage = new TableStorage({
 });
 */
 
-const databaseIdCosmosDbStorage = "ProcessEngine";
-const authKeyCosmosDbStorage = "YnHS2X2LHg96cJc7KO7Ii8bWbYHE2WU2biiLYPWLEaomlLEWcXrCJIK6qFwsMS5eZgoLk0R946JkODksl7pHJg==";
-const serviceEndpointCosmosDbStorage = "https://processengine.documents.azure.com:443/";
-
 // Add state middleware
 const conversationCosmosDbStorage = new CosmosDbStorage({
-        databaseId: databaseIdCosmosDbStorage,
+        databaseId: process.env.DatabaseIdCosmosDbStorage,
         collectionId: "conversationStorage",
-        authKey: authKeyCosmosDbStorage,
-        serviceEndpoint: serviceEndpointCosmosDbStorage
+        authKey: process.env.AuthKeyCosmosDbStorage,
+        serviceEndpoint: process.env.ServiceEndpointCosmosDbStorage
      });
 const conversationState = new ConversationState(conversationCosmosDbStorage);
 
 const userCosmosDbStorage = new CosmosDbStorage({
-    databaseId: databaseIdCosmosDbStorage,
+    databaseId: process.env.DatabaseIdCosmosDbStorage,
     collectionId: "userStorage",
-    authKey: authKeyCosmosDbStorage,
-    serviceEndpoint: serviceEndpointCosmosDbStorage
+    authKey: process.env.AuthKeyCosmosDbStorage,
+    serviceEndpoint: process.env.ServiceEndpointCosmosDbStorage
 });
 const userState = new UserState(userCosmosDbStorage);
 
@@ -77,6 +73,7 @@ const botCapabilities = [
 // Listen for incoming requests
 server.post('/api/messages', (req, res) => {
     adapter.processActivity(req, res, async (context) => {
+        console.log(context);
         const isMessage = context.activity.type === 'message';
 
         // State will store all of your information
