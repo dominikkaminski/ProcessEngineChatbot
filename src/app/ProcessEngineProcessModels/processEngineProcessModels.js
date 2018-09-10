@@ -1,5 +1,6 @@
-const { DialogContainer, TextPrompt } = require('botbuilder-dialogs');
+const { DialogContainer } = require('botbuilder-dialogs');
 const ConnectionToProcessEngine = require('./../../helpers/ProcessEngine/connectionToProcessEngine.js');
+const ProcessModelsDialog = require('./ProcessModelsDialog');
 
 class ProcessEngineProcessModels extends DialogContainer {
     constructor(userState) {
@@ -15,11 +16,7 @@ class ProcessEngineProcessModels extends DialogContainer {
                     const body = await ConnectionToProcessEngine.getProcessModels(url);
                     const processModels = body['processModels'];
                     if (processModels.length > 0) {
-                        let listOfProcessModelIDs = "**Deployed ProcessModels:**";
-                        for (let i = 0; i < processModels.length; i++) {
-                            listOfProcessModelIDs += `\n- ${processModels[i]['id']}`;
-                        }
-                        await dc.context.sendActivity(listOfProcessModelIDs);
+                        await processModelsDialog.onTurn(dc, processModels);
                     } else {
                         await dc.context.sendActivity('There are no ProcessModels...');
                     }
@@ -32,7 +29,7 @@ class ProcessEngineProcessModels extends DialogContainer {
         ]);
 
         // Defining the prompt used in this conversation flow
-        this.dialogs.add('textPrompt', new TextPrompt());
+        const processModelsDialog = new ProcessModelsDialog();
     }
 }
 exports.ProcessEngineProcessModels = ProcessEngineProcessModels;

@@ -5,7 +5,7 @@ const jsonGeneratorActionSubmit = require('./../../../helpers/AdaptiveCards/json
 
 class MainDialog {
     async onTurn(dc, botCapabilities) {
-        const speak = jsonGenerator.generateSpeak("Test");
+        const speak = jsonGenerator.generateSpeak("How can I help you?");
 
         const bodyArray = [];
         const actionArray = [];
@@ -13,8 +13,8 @@ class MainDialog {
         let currentActionSubmit;
 
         for (let i = 0; i < botCapabilities.length; i++) {
-            currentActionSubmit = jsonGeneratorActionSubmit.generateActionSubmitWithValue(this.title = botCapabilities[i],
-                                                                                          this.data = botCapabilities[i]);
+            currentActionSubmit = jsonGeneratorActionSubmit.generateActionSubmit(this.title = botCapabilities[i],
+                                                                                 this.data = botCapabilities[i]);
             actionArray.push(currentActionSubmit);
         }
 

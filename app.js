@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
-const {BotFrameworkAdapter, BotStateSet, ConversationState, MemoryStorage, UserState} = require("botbuilder");
+const {BotFrameworkAdapter, BotStateSet, ConversationState, UserState} = require("botbuilder");
 const {LuisRecognizer} = require("botbuilder-ai");
+const {CosmosDbStorage} = require("botbuilder-azure");
 const {DialogSet} = require("botbuilder-dialogs");
 const restify = require("restify");
 
@@ -21,18 +22,48 @@ const adapter = new BotFrameworkAdapter({
 const luisRecognizer = new LuisRecognizer({
     // This appID is for a public app that's made available for demo purposes
     // You can use it by providing your LUIS subscription key
-    appId: '0437a628-00e8-476e-a172-dcbc573994f3',
+    appId: '028a73e6-13cc-4f0b-83e6-ca86cd59ca3b',
     // replace subscriptionKey with your Authoring Key
     // your key is at https://www.luis.ai under User settings > Authoring Key
-    subscriptionKey: '0ce7760643bd4d6a81e3229e5bfd471d',
+    subscriptionKey: 'e682f37972684670b60d58b030214321',
     // The serviceEndpoint URL begins with "https://<region>.api.cognitive.microsoft.com", where region is the region associated with the key you are using. Some examples of regions are `westus`, `westcentralus`, `eastus2`, and `southeastasia`.
     serviceEndpoint: 'https://westus.api.cognitive.microsoft.com'
 });
+/*
+// Create Memory storage
+const memoryStorage = new MemoryStorage();
+
+// Create Azure Table storage
+const storageAccessKeyAzureTables = "111yn7XgH7NaE6GvAXQDVO4UbCQdN2mosJetD5quck/d/FBDzYT2ZtwR4r0eOFr9L7Ip0vc6gmKXZBfTpWfpvA=="; // Obtain from Azure Portal
+const hostAzureTables = "https://processenginebota70b.table.core.windows.net";
+
+const userStorage = new TableStorage({
+    tableName: "userStorage",
+    storageAccessKey: storageAccessKeyAzureTables,
+    host: hostAzureTables
+});
+*/
+
+const databaseIdCosmosDbStorage = "ProcessEngine";
+const authKeyCosmosDbStorage = "YnHS2X2LHg96cJc7KO7Ii8bWbYHE2WU2biiLYPWLEaomlLEWcXrCJIK6qFwsMS5eZgoLk0R946JkODksl7pHJg==";
+const serviceEndpointCosmosDbStorage = "https://processengine.documents.azure.com:443/";
 
 // Add state middleware
-const storage = new MemoryStorage();
-const conversationState = new ConversationState(storage);
-const userState = new UserState(storage);
+const conversationCosmosDbStorage = new CosmosDbStorage({
+        databaseId: databaseIdCosmosDbStorage,
+        collectionId: "conversationStorage",
+        authKey: authKeyCosmosDbStorage,
+        serviceEndpoint: serviceEndpointCosmosDbStorage
+     });
+const conversationState = new ConversationState(conversationCosmosDbStorage);
+
+const userCosmosDbStorage = new CosmosDbStorage({
+    databaseId: databaseIdCosmosDbStorage,
+    collectionId: "userStorage",
+    authKey: authKeyCosmosDbStorage,
+    serviceEndpoint: serviceEndpointCosmosDbStorage
+});
+const userState = new UserState(userCosmosDbStorage);
 
 adapter.use(new BotStateSet(conversationState, userState));
 adapter.use(luisRecognizer);
