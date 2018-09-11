@@ -2,7 +2,8 @@
 // Licensed under the MIT License.
 const {BotFrameworkAdapter, BotStateSet, ConversationState, MemoryStorage, UserState} = require("botbuilder");
 const {LuisRecognizer} = require("botbuilder-ai");
-const {DialogSet} = require("botbuilder-dialogs");
+const {CosmosDbStorage} = require("botbuilder-azure");
+const {DialogSet, OAuthPrompt} = require("botbuilder-dialogs");
 const restify = require("restify");
 
 // Create server
@@ -30,9 +31,22 @@ const luisRecognizer = new LuisRecognizer({
 });
 
 // Add state middleware
-const storage = new MemoryStorage();
-const conversationState = new ConversationState(storage);
-const userState = new UserState(storage);
+const conversationCosmosDbStorage = new CosmosDbStorage({
+    databaseId: process.env.DatabaseIdCosmosDbStorage,
+    collectionId: "conversationStorage",
+    authKey: process.env.AuthKeyCosmosDbStorage,
+    serviceEndpoint: process.env.ServiceEndpointCosmosDbStorage
+});
+const conversationState = new ConversationState(conversationCosmosDbStorage);
+
+const userCosmosDbStorage = new CosmosDbStorage({
+    databaseId: process.env.DatabaseIdCosmosDbStorage,
+    collectionId: "userStorage",
+    authKey: process.env.AuthKeyCosmosDbStorage,
+    serviceEndpoint: process.env.ServiceEndpointCosmosDbStorage
+});
+const userState = new UserState(userCosmosDbStorage);
+
 
 adapter.use(new BotStateSet(conversationState, userState));
 adapter.use(luisRecognizer);
@@ -42,12 +56,13 @@ const botCapabilities = [
     'Connecting to a ProcessEngine',
     'Show ProcessModels',
 ];
-
+const connectionName = process.env.CONNECTION_NAME;
 // Listen for incoming requests
 server.post('/api/messages', (req, res) => {
     adapter.processActivity(req, res, async (context) => {
-        const isMessage = context.activity.type === 'message';
 
+        //console.log(context);
+        const isMessage = context.activity.type === 'message';
         // State will store all of your information
         const conversationContext = conversationState.get(context);
 
@@ -56,7 +71,7 @@ server.post('/api/messages', (req, res) => {
         await dc.continue();
 
         // Getting the user info from the state
-        const userStateContect = userState.get(dc.context);
+        const userStateContext = userState.get(dc.context);
 
         if (!context.responded && isMessage) {
             // Retrieve the LUIS results from our LUIS application
@@ -68,17 +83,17 @@ server.post('/api/messages', (req, res) => {
 
             switch (topIntent) {
                 case "ProcessEngineConnection": {
-                    if (!userStateContect.processEngine || !userStateContect.processEngine.url) {
+                    if (!userStateContext.processEngine || !userStateContext.processEngine.url) {
                         await dc.context.sendActivity('I have understood, that you want to connect to a ProcessEngine.');
                         await dc.begin('processEngineConnectionPrompt', luisResults);
                     } else {
-                        await dc.context.sendActivity(`You are already connected to ${userStateContect.processEngine.url}.`);
+                        await dc.context.sendActivity(`You are already connected to ${userStateContext.processEngine.url}.`);
                     }
                     break;
                 }
 
                 case "ProcessEngineProcessModels": {
-                    if (!userStateContect.processEngine || !userStateContect.processEngine.url) {
+                    if (!userStateContext.processEngine || !userStateContext.processEngine.url) {
                         await dc.context.sendActivity('I have understood, that you want to list your ProcessModels. \n\nBut first, you have to connect to a ProcessEngine.');
                         await dc.begin('processEngineConnectionPrompt');
                     } else {
@@ -97,8 +112,13 @@ server.post('/api/messages', (req, res) => {
                     break;
                 }
 
+                case "Login": {
+                    await dc.begin('taskNeedingLogin');
+                    break;
+                }
+
                 default: {
-                    if (!userStateContect.processEngine) {
+                    if (!userStateContext.processEngine) {
                         await dc.context.sendActivity(`I did not understand 😟\n\n Your are not connected to a ProcessEngine.\n If you want to connect to one, please say 'Connect to a ProcessEngine'.`);
                     } else {
                         await dc.context.sendActivity(`I did not understand 😟 \n\n Please ask for help.`);
@@ -110,6 +130,25 @@ server.post('/api/messages', (req, res) => {
     });
 });
 const dialogs = new DialogSet();
+dialogs.add('loginPrompt', new OAuthPrompt({
+    connectionName: connectionName,
+    title: 'Login',
+    timeout: 300000   // User has 5 minutes to login
+}));
+
+dialogs.add('taskNeedingLogin', [
+    async function (dc) {
+        await dc.begin('loginPrompt');
+    },
+    async function (dc, token) {
+        if (token) {
+            await dc.context.sendActivity(`Your token is: ` + token.token);
+        } else {
+            await dc.context.sendActivity(`Sorry... We couldn't log you in. Try again later.`);
+            await dc.end();
+        }
+    }
+]);
 
 // Importing the dialogs
 const processEngineConnection = require("./src/app/ProcessEngineConnection/processEngineConnection");
