@@ -6,6 +6,8 @@ const {CosmosDbStorage} = require("botbuilder-azure");
 const {DialogSet, OAuthPrompt} = require("botbuilder-dialogs");
 const restify = require("restify");
 
+const ConnectionToProcessEngine = require('./src/helpers/ProcessEngine/connectionToProcessEngine.js');
+
 // Create server
 let server = restify.createServer();
 server.listen(process.env.port || process.env.PORT || 3978, function () {
@@ -95,7 +97,7 @@ server.post('/api/messages', (req, res) => {
 
             switch (topIntent) {
                 case "ProcessEngineConnection": {
-                    if (!userStateContext.processEngine || !userStateContext.processEngine.url) {
+                    if (ConnectionToProcessEngine.hasProcessEngineAddress(userStateContext)) {
                         await dc.context.sendActivity('I have understood, that you want to connect to a ProcessEngine.');
                         await dc.begin('processEngineConnectionPrompt', luisResults);
                     } else {
@@ -105,11 +107,21 @@ server.post('/api/messages', (req, res) => {
                 }
 
                 case "ProcessEngineProcessModels": {
-                    if (!userStateContext.processEngine || !userStateContext.processEngine.url) {
+                    if (ConnectionToProcessEngine.hasProcessEngineAddress(userStateContext)) {
                         await dc.context.sendActivity('I have understood, that you want to list your ProcessModels. \n\nBut first, you have to connect to a ProcessEngine.');
                         await dc.begin('processEngineConnectionPrompt');
                     } else {
                         await dc.begin('processEngineProcessModelsPrompt');
+                    }
+                    break;
+                }
+
+                case "ProcessEngineUserTasks": {
+                    if (ConnectionToProcessEngine.hasProcessEngineAddress(userStateContext)) {
+                        await dc.context.sendActivity('I have understood, that you want to list your UserTasks. \n\nBut first, you have to connect to a ProcessEngine.');
+                        await dc.begin('processEngineConnectionPrompt');
+                    } else {
+                        await dc.begin('processEngineUserTasksPrompt');
                     }
                     break;
                 }
@@ -150,13 +162,16 @@ dialogs.add('processEngineConnectionPrompt', new processEngineConnection.Process
 const processEngineProcessModels = require("./src/app/ProcessEngineProcessModels/processEngineProcessModels");
 dialogs.add('processEngineProcessModelsPrompt', new processEngineProcessModels.ProcessEngineProcessModels(userState));
 
+const processEngineUserTasks = require("./src/app/ProcessEngineUserTasks/processEngineUserTasks");
+dialogs.add('processEngineUserTasksPrompt', new processEngineUserTasks.ProcessEngineUserTasks(userState));
+
 const greetings = require("./src/app/Greetings/greetings");
 dialogs.add('greetingsPrompt', new greetings.Greetings(userState, botCapabilities));
 
 const help = require("./src/app/Help/help");
 dialogs.add('helpPrompt', new help.Help(userState, botCapabilities));
 
-// Add a dialog to get a token for the connectrion
+// Add a dialog to get a token for the connection
 dialogs.add('loginPrompt', new OAuthPrompt({
     connectionName: 'BotFramework',
     text: "Please Sign In",
