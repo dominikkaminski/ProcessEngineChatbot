@@ -41,5 +41,6 @@ exports.generateCard = function(speak,
         jsonString += `,${JSON.stringify(actions_generated).slice(1, -1)}`;
     }
     jsonString += "}";
+    //console.log(jsonString);
     return JSON.parse(jsonString);
 };
