@@ -3,7 +3,7 @@
 const {BotFrameworkAdapter, BotStateSet, ConversationState, UserState} = require("botbuilder");
 const {LuisRecognizer} = require("botbuilder-ai");
 const {CosmosDbStorage} = require("botbuilder-azure");
-const {DialogSet} = require("botbuilder-dialogs");
+const {DialogSet, OAuthPrompt} = require("botbuilder-dialogs");
 const restify = require("restify");
 
 // Create server
@@ -73,7 +73,6 @@ const botCapabilities = [
 // Listen for incoming requests
 server.post('/api/messages', (req, res) => {
     adapter.processActivity(req, res, async (context) => {
-        console.log(context);
         const isMessage = context.activity.type === 'message';
 
         // State will store all of your information
@@ -84,7 +83,7 @@ server.post('/api/messages', (req, res) => {
         await dc.continue();
 
         // Getting the user info from the state
-        const userStateContect = userState.get(dc.context);
+        const userStateContext = userState.get(dc.context);
 
         if (!context.responded && isMessage) {
             // Retrieve the LUIS results from our LUIS application
@@ -96,17 +95,17 @@ server.post('/api/messages', (req, res) => {
 
             switch (topIntent) {
                 case "ProcessEngineConnection": {
-                    if (!userStateContect.processEngine || !userStateContect.processEngine.url) {
+                    if (!userStateContext.processEngine || !userStateContext.processEngine.url) {
                         await dc.context.sendActivity('I have understood, that you want to connect to a ProcessEngine.');
                         await dc.begin('processEngineConnectionPrompt', luisResults);
                     } else {
-                        await dc.context.sendActivity(`You are already connected to ${userStateContect.processEngine.url}.`);
+                        await dc.context.sendActivity(`You are already connected to ${userStateContext.processEngine.url}.`);
                     }
                     break;
                 }
 
                 case "ProcessEngineProcessModels": {
-                    if (!userStateContect.processEngine || !userStateContect.processEngine.url) {
+                    if (!userStateContext.processEngine || !userStateContext.processEngine.url) {
                         await dc.context.sendActivity('I have understood, that you want to list your ProcessModels. \n\nBut first, you have to connect to a ProcessEngine.');
                         await dc.begin('processEngineConnectionPrompt');
                     } else {
@@ -120,13 +119,18 @@ server.post('/api/messages', (req, res) => {
                     break;
                 }
 
+                case "Login": {
+                    await dc.begin('displayToken');
+                    break;
+                }
+
                 case "Help": {
                     await dc.begin('helpPrompt');
                     break;
                 }
 
                 default: {
-                    if (!userStateContect.processEngine) {
+                    if (!userStateContext.processEngine) {
                         await dc.context.sendActivity(`I did not understand 😟\n\n Your are not connected to a ProcessEngine.\n If you want to connect to one, please say 'Connect to a ProcessEngine'.`);
                     } else {
                         await dc.context.sendActivity(`I did not understand 😟 \n\n Please ask for help.`);
@@ -152,3 +156,26 @@ dialogs.add('greetingsPrompt', new greetings.Greetings(userState, botCapabilitie
 const help = require("./src/app/Help/help");
 dialogs.add('helpPrompt', new help.Help(userState, botCapabilities));
 
+// Add a dialog to get a token for the connectrion
+dialogs.add('loginPrompt', new OAuthPrompt({
+    connectionName: 'BotFramework',
+    text: "Please Sign In",
+    title: "Sign In",
+    timeout: 300000        // User has 5 minutes to login
+}));
+
+// Add a dialog to display the token once the user has logged in
+dialogs.add('displayToken', [
+    async function (dc) {
+        await dc.begin('loginPrompt');
+    },
+    async function (dc, token) {
+        if (token) {
+            // Continue with task needing access token
+            await dc.context.sendActivity(`Your token is: ` + token.token);
+        } else {
+            await dc.context.sendActivity(`Sorry... We couldn't log you in. Try again later.`);
+            await dc.end();
+        }
+    }
+]);
