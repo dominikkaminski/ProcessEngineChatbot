@@ -69,7 +69,8 @@ adapter.use(luisRecognizer);
 // List all Bot capabilities to guide the user
 const botCapabilities = [
     'Connecting to a ProcessEngine',
-    'Show ProcessModels',
+    'List ProcessModels',
+    'List UserTasks',
 ];
 
 // Listen for incoming requests
@@ -132,7 +133,12 @@ server.post('/api/messages', (req, res) => {
                 }
 
                 case "Login": {
-                    await dc.begin('displayToken');
+                    await dc.begin('loginPrompt');
+                    break;
+                }
+
+                case "Logout": {
+                    await adapter.signOutUser(context, 'IdentityServerv4');
                     break;
                 }
 
@@ -142,7 +148,7 @@ server.post('/api/messages', (req, res) => {
                 }
 
                 default: {
-                    if (!userStateContext.processEngine) {
+                    if (ConnectionToProcessEngine.hasProcessEngineAddress(userStateContext)) {
                         await dc.context.sendActivity(`I did not understand 😟\n\n Your are not connected to a ProcessEngine.\n If you want to connect to one, please say 'Connect to a ProcessEngine'.`);
                     } else {
                         await dc.context.sendActivity(`I did not understand 😟 \n\n Please ask for help.`);
@@ -152,6 +158,7 @@ server.post('/api/messages', (req, res) => {
             }
         }
     });
+
 });
 const dialogs = new DialogSet();
 
@@ -171,26 +178,5 @@ dialogs.add('greetingsPrompt', new greetings.Greetings(userState, botCapabilitie
 const help = require("./src/app/Help/help");
 dialogs.add('helpPrompt', new help.Help(userState, botCapabilities));
 
-// Add a dialog to get a token for the connection
-dialogs.add('loginPrompt', new OAuthPrompt({
-    connectionName: 'BotFramework',
-    text: "Please Sign In",
-    title: "Sign In",
-    timeout: 300000        // User has 5 minutes to login
-}));
-
-// Add a dialog to display the token once the user has logged in
-dialogs.add('displayToken', [
-    async function (dc) {
-        await dc.begin('loginPrompt');
-    },
-    async function (dc, token) {
-        if (token) {
-            // Continue with task needing access token
-            await dc.context.sendActivity(`Your token is: ` + token.token);
-        } else {
-            await dc.context.sendActivity(`Sorry... We couldn't log you in. Try again later.`);
-            await dc.end();
-        }
-    }
-]);
+const login = require("./src/app/Login/login");
+dialogs.add('loginPrompt', new login.Login(userState, botCapabilities));

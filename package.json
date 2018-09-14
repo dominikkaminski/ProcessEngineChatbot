@@ -9,10 +9,11 @@
   "author": "Microsoft",
   "license": "MIT",
   "dependencies": {
-    "botbuilder": "^4.0.0-preview1.2",
+    "botbuilder": "file:./botbuilder/botbuilder",
     "botbuilder-ai": "^4.0.0-preview1.2",
     "botbuilder-azure": "^4.0.0-preview1.2",
-    "botbuilder-dialogs": "^4.0.0-preview1.2",
+    "botframework-connector": "file:./botbuilder/botframework-connector",
+    "botbuilder-dialogs": "file:./botbuilder/botbuilder-dialogs",
     "fs": "^0.0.1-security",
     "path": "^0.12.7",
     "restify": "^7.1.1",

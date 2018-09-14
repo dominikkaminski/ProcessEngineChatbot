@@ -65,3 +65,6 @@ package-lock.json
 
 # Editors
 .idea/*
+
+# Mac
+.DS_Store

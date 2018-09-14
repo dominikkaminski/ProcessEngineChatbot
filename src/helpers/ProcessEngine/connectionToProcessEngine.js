@@ -51,7 +51,7 @@ exports.getAllUserTasksAsArray = async function (url) {
     const userTasks = [];
     const processModelsReq = await this.getProcessModels(url);
     const processModels = processModelsReq['processModels'];
-    
+
     for (let i = 0; i < processModels.length; i++) {
         const processModelId = processModels[i]['id'];
         const currentUserTaskReq = await this.getUserTask(url, processModelId);
