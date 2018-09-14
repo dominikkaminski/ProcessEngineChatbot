@@ -1,19 +1,15 @@
 {
-  "name": "nodev4echobot",
+  "name": "process-engine-bot",
   "version": "1.0.0",
-  "description": "Default Echo bot for node",
+  "description": "Azure Botframework implementation for NodeJS",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
   "author": "Microsoft",
   "license": "MIT",
   "dependencies": {
-    "botbuilder": "file:./botbuilder/botbuilder",
+    "botbuilder": "^4.0.0-preview1.2",
     "botbuilder-ai": "^4.0.0-preview1.2",
     "botbuilder-azure": "^4.0.0-preview1.2",
-    "botframework-connector": "file:./botbuilder/botframework-connector",
-    "botbuilder-dialogs": "file:./botbuilder/botbuilder-dialogs",
+    "botbuilder-dialogs": "^4.0.0-preview1.2",
     "fs": "^0.0.1-security",
     "path": "^0.12.7",
     "restify": "^7.1.1",
